@@ -1,3 +1,3 @@
 # BankExchangeRates
 
-Приложение, читающее у банка www.bnb.by курсы валют и сохраняет в БД.
+An application that reads bank currency from the bank www.bnb.by and saves it in the database.
