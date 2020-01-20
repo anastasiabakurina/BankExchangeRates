@@ -16,73 +16,70 @@ import java.io.IOException;
 import java.util.List;
 
 public class Main {
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
 
         Logger logger = LoggerFactory.logger(Main.class);
-        try (Session session = HibernateUtil.getSession()) {
-            String date = null;
-            String elementCurrency = null;
-            String elementCurrencyBuy = null;
-            String elementCurrencySale = null;
-            String title = null;
-            String address = null;
-            Document document = Jsoup.connect("https://www.bnb.by/kursy-valyut/fizicheskim-litsam/").get();
-            Elements classElements = document.getElementsByAttributeValue("class", "tr-info");
+        Session session = HibernateUtil.getSession();
+        String date = null;
+        String elementCurrency = null;
+        String elementCurrencyBuy = null;
+        String elementCurrencySale = null;
+        String title = null;
+        String address = null;
+        Document document = null;
+        try {
+            document = Jsoup.connect("https://www.bnb.by/kursy-valyut/fizicheskim-litsam/").get();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Elements classElements = document.getElementsByAttributeValue("class", "tr-info");
 
-            Elements elementsDate = document.getElementsByAttributeValue("name", "request[TIME]");//.getElementsByAttribute("input");//.getElementsByTag("input");
-            for (Element inputElement : elementsDate) {
-                date = inputElement.attr("value");
-            }
+        Elements elementsDate = document.getElementsByAttributeValue("name", "request[TIME]");//.getElementsByAttribute("input");//.getElementsByTag("input");
+        for (Element inputElement : elementsDate) {
+            date = inputElement.attr("value");
+        }
 
-            logger.info("date: " + date);
-            for (Element element : classElements) {
-                Element elementCenter = element.child(0);
-                title = elementCenter.child(0).text();
-                address = elementCenter.child(1).text();
-                logger.info("address/title " + address + " " + title);
-                Element elementCurrencyClass = element.child(2);
+        logger.info("date: " + date);
+        for (Element element : classElements) {
+            Element elementCenter = element.child(0);
+            title = elementCenter.child(0).text();
+            address = elementCenter.child(1).text();
+            logger.info("address/title " + address + " " + title);
+            Element elementCurrencyClass = element.child(2);
 
-                Elements es = elementCurrencyClass.getElementsByAttributeValue("class", "currency_wrap");
-                for (Element element1 : es) {
-                    Element element3 = element1.child(0);
-                    Element elementValueCurrency = element3.child(1);
+            Elements es = elementCurrencyClass.getElementsByAttributeValue("class", "currency_wrap");
+            for (Element element1 : es) {
+                Element element3 = element1.child(0);
+                Element elementValueCurrency = element3.child(1);
 
-                    Elements get = elementValueCurrency.getElementsByTag("tr");
-                    for (Element element2 : get) {
-                        elementCurrency = element2.child(0).text();
-                        elementCurrencyBuy = element2.child(1).text();
-                        elementCurrencySale = element2.child(2).text();
-                        logger.info("values=" + elementCurrency + " " + elementCurrencyBuy + " " + elementCurrencySale);
+                Elements get = elementValueCurrency.getElementsByTag("tr");
+                for (Element element2 : get) {
+                    elementCurrency = element2.child(0).text();
+                    elementCurrencyBuy = element2.child(1).text();
+                    elementCurrencySale = element2.child(2).text();
+                    logger.info("values=" + elementCurrency + " " + elementCurrencyBuy + " " + elementCurrencySale);
 
-                        val currency = Currency.builder()
-                                .officeTitle(title)
-                                .officeAddress(address)
-                                .elementCurrency(elementCurrency)
-                                .elementCurrencyBuy(elementCurrencyBuy)
-                                .elementCurrencySale(elementCurrencySale)
-                                .date(date)
-                                .build();
+                    val currency = Currency.builder()
+                            .officeTitle(title)
+                            .officeAddress(address)
+                            .elementCurrency(elementCurrency)
+                            .elementCurrencyBuy(elementCurrencyBuy)
+                            .elementCurrencySale(elementCurrencySale)
+                            .date(date)
+                            .build();
 
-                        session.save(currency);
-                        session.getTransaction().begin();
-                        session.persist(currency);
-                        session.getTransaction().commit();
-                    }
+                    session.save(currency);
+                    session.getTransaction().begin();
+                    session.persist(currency);
+                    session.getTransaction().commit();
                 }
             }
-        } catch (Throwable ex) {
-            ex.printStackTrace();
         }
 
-        List<Currency> list = null;
-        try (Session session = HibernateUtil.getSession()) {
-            session.getTransaction().begin();
-            Query query = session.createQuery("FROM Currency");
-            list = (List<Currency>) query.list();
-            session.getTransaction().commit();
-        } catch (Throwable ex) {
-            ex.printStackTrace();
-        }
+        session.getTransaction().begin();
+        Query query = session.createQuery("FROM Currency");
+        List<Currency> list = (List<Currency>) query.list();
+        session.getTransaction().commit();
 
         if (list != null && !list.isEmpty()) {
             for (Currency currency : list) {
