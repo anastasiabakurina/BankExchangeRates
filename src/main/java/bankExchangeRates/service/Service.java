@@ -1,7 +1,5 @@
 package bankExchangeRates.service;
 
-import bankExchangeRates.model.Currency;
-import bankExchangeRates.util.HibernateUtil;
 import lombok.val;
 import org.hibernate.Session;
 import org.hibernate.annotations.common.util.impl.LoggerFactory;
@@ -11,9 +9,15 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import bankExchangeRates.util.HibernateUtil;
+import bankExchangeRates.model.Currency;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 public class Service {
     private String date = null;
@@ -25,11 +29,13 @@ public class Service {
     private Document document = null;
     private Session session = HibernateUtil.getSession();
     private Logger logger = LoggerFactory.logger(Service.class);
+    private Map<String, String> mapCurrencySale = new HashMap<>();
 
     public void startParse() {
         try {
-            document = Jsoup.connect("https://www.bnb.by/kursy-valyut/fizicheskim-litsam/").get();
+            document = Jsoup.connect("https://www.bnb.by/kursy-valyut/fizicheskim-litsam/").timeout(20000).get();
         } catch (IOException e) {
+            logger.warn("Timeout!!!");
             e.printStackTrace();
         }
         Elements classElements = document.getElementsByAttributeValue("class", "tr-info");
@@ -58,6 +64,10 @@ public class Service {
                     elementCurrencySale = element2.child(2).text();
                     logger.info("values=" + elementCurrency + " " + elementCurrencyBuy + " " + elementCurrencySale);
 
+                    if ("USD".equals(elementCurrency)) {
+                        mapCurrencySale.put(address, elementCurrencySale);
+                    }
+
                     val currency = Currency.builder()
                             .officeTitle(title)
                             .officeAddress(address)
@@ -74,7 +84,22 @@ public class Service {
                 }
             }
         }
-        checkDBTable();
+    }
+
+    public String getMinCurrency(){
+        String min = Collections.min(mapCurrencySale.values());
+        return min;
+    }
+
+    public String getAddressMinCurrency() {
+        List<String> listAddresses = new ArrayList<>();
+        for (Map.Entry<String, String> entry : mapCurrencySale.entrySet()) {
+            if (entry.getValue().equals(getMinCurrency())) {
+                listAddresses.add("\n" + entry.getKey() );
+            }
+        }
+        String addresses = StringUtils.substringBetween(listAddresses.toString(), "[", "]");
+        return addresses;
     }
 
     public void checkDBTable() {
@@ -88,5 +113,18 @@ public class Service {
                 logger.info("what in db: " + currency);
             }
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Service service = (Service) o;
+        return Objects.equals(mapCurrencySale, service.mapCurrencySale);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(mapCurrencySale);
     }
 }
