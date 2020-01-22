@@ -2,24 +2,20 @@ package bankExchangeRates.service;
 
 import lombok.val;
 import org.hibernate.Session;
-import org.hibernate.annotations.common.util.impl.LoggerFactory;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
 import org.hibernate.query.Query;
-import org.jboss.logging.Logger;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import bankExchangeRates.util.HibernateUtil;
 import bankExchangeRates.model.Currency;
-
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.StringUtils;
 
-public class Service {
+public class CurrencyService {
     private String date = null;
     private String elementCurrency = null;
     private String elementCurrencyBuy = null;
@@ -28,16 +24,19 @@ public class Service {
     private String address = null;
     private Document document = null;
     private Session session = HibernateUtil.getSession();
-    private Logger logger = LoggerFactory.logger(Service.class);
+    public static Logger logger = Logger.getLogger(CurrencyService.class.getName());
+
     private Map<String, String> mapCurrencySale = new HashMap<>();
 
     public void startParse() {
         try {
             document = Jsoup.connect("https://www.bnb.by/kursy-valyut/fizicheskim-litsam/").timeout(20000).get();
+            LogManager.getLogManager().readConfiguration(CurrencyService.class.getResourceAsStream("/logging.properties"));
         } catch (IOException e) {
-            logger.warn("Timeout!!!");
+            logger.warning("Timeout!!!");
             e.printStackTrace();
         }
+
         Elements classElements = document.getElementsByAttributeValue("class", "tr-info");
         Elements elementsDate = document.getElementsByAttributeValue("name", "request[TIME]");//.getElementsByAttribute("input");//.getElementsByTag("input");
         for (Element inputElement : elementsDate) {
@@ -86,7 +85,7 @@ public class Service {
         }
     }
 
-    public String getMinCurrency(){
+    public String getMinCurrency() {
         String min = Collections.min(mapCurrencySale.values());
         return min;
     }
@@ -95,10 +94,12 @@ public class Service {
         List<String> listAddresses = new ArrayList<>();
         for (Map.Entry<String, String> entry : mapCurrencySale.entrySet()) {
             if (entry.getValue().equals(getMinCurrency())) {
-                listAddresses.add("\n" + entry.getKey() );
+                listAddresses.add("\n" + entry.getKey());
             }
         }
         String addresses = StringUtils.substringBetween(listAddresses.toString(), "[", "]");
+        logger.info("The lowest currency: " + getMinCurrency());
+        logger.info("The addresses: " + addresses);
         return addresses;
     }
 
@@ -119,7 +120,7 @@ public class Service {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Service service = (Service) o;
+        CurrencyService service = (CurrencyService) o;
         return Objects.equals(mapCurrencySale, service.mapCurrencySale);
     }
 

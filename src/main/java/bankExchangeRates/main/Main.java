@@ -1,6 +1,5 @@
 package bankExchangeRates.main;
 
-import bankExchangeRates.service.Service;
 import bankExchangeRates.service.TelegramBot;
 import org.telegram.telegrambots.ApiContext;
 import org.telegram.telegrambots.ApiContextInitializer;
@@ -19,7 +18,7 @@ public class Main{
             e.printStackTrace();
         }
 
-//        Service service = new Service();
+//        CurrencyService service = new CurrencyService();
 //        service.startParse();
 //        service.checkDBTable();
 //        System.out.println("---" + service.getAddressMinCurrency());

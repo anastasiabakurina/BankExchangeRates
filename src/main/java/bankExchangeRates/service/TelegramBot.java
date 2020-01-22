@@ -18,7 +18,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         String text = message.getText();
         sendMsg(message, "Hello! I will show the addresses of the lowest USD currency from bnb.by!");
         sendMsg(message, "Please, wait one minute :) Otherwise retry again.");
-        Service service = new Service();
+        CurrencyService service = new CurrencyService();
         service.startParse();
         if (text.equals("/start")) {
             sendMsg(message, "The lowest currency 1USD is " + service.getMinCurrency() + "BYN");
