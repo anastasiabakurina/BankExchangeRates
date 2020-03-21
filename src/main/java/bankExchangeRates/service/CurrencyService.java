@@ -1,21 +1,21 @@
 package bankExchangeRates.service;
 
-import bankExchangeRates.model.Currency;
-import bankExchangeRates.util.HibernateUtil;
 import lombok.val;
 import org.hibernate.Session;
-import org.hibernate.annotations.common.util.impl.LoggerFactory;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
 import org.hibernate.query.Query;
-import org.jboss.logging.Logger;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-
+import bankExchangeRates.util.HibernateUtil;
+import bankExchangeRates.model.Currency;
 import java.io.IOException;
-import java.util.List;
+import java.util.*;
+import org.apache.commons.lang3.StringUtils;
 
-public class Service {
+public class CurrencyService {
     private String date = null;
     private String elementCurrency = null;
     private String elementCurrencyBuy = null;
@@ -24,14 +24,19 @@ public class Service {
     private String address = null;
     private Document document = null;
     private Session session = HibernateUtil.getSession();
-    private Logger logger = LoggerFactory.logger(Service.class);
+    public static Logger logger = Logger.getLogger(CurrencyService.class.getName());
+
+    private Map<String, String> mapCurrencySale = new HashMap<>();
 
     public void startParse() {
         try {
-            document = Jsoup.connect("https://www.bnb.by/kursy-valyut/fizicheskim-litsam/").get();
+            document = Jsoup.connect("https://www.bnb.by/kursy-valyut/fizicheskim-litsam/").timeout(20000).get();
+            LogManager.getLogManager().readConfiguration(CurrencyService.class.getResourceAsStream("/logging.properties"));
         } catch (IOException e) {
+            logger.warning("Timeout!!!");
             e.printStackTrace();
         }
+
         Elements classElements = document.getElementsByAttributeValue("class", "tr-info");
         Elements elementsDate = document.getElementsByAttributeValue("name", "request[TIME]");//.getElementsByAttribute("input");//.getElementsByTag("input");
         for (Element inputElement : elementsDate) {
@@ -58,6 +63,10 @@ public class Service {
                     elementCurrencySale = element2.child(2).text();
                     logger.info("values=" + elementCurrency + " " + elementCurrencyBuy + " " + elementCurrencySale);
 
+                    if ("USD".equals(elementCurrency)) {
+                        mapCurrencySale.put(address, elementCurrencySale);
+                    }
+
                     val currency = Currency.builder()
                             .officeTitle(title)
                             .officeAddress(address)
@@ -74,7 +83,24 @@ public class Service {
                 }
             }
         }
-        checkDBTable();
+    }
+
+    public String getMinCurrency() {
+        String min = Collections.min(mapCurrencySale.values());
+        return min;
+    }
+
+    public String getAddressMinCurrency() {
+        List<String> listAddresses = new ArrayList<>();
+        for (Map.Entry<String, String> entry : mapCurrencySale.entrySet()) {
+            if (entry.getValue().equals(getMinCurrency())) {
+                listAddresses.add("\n" + entry.getKey());
+            }
+        }
+        String addresses = StringUtils.substringBetween(listAddresses.toString(), "[", "]");
+        logger.info("The lowest currency: " + getMinCurrency());
+        logger.info("The addresses: " + addresses);
+        return addresses;
     }
 
     public void checkDBTable() {
@@ -88,5 +114,18 @@ public class Service {
                 logger.info("what in db: " + currency);
             }
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        CurrencyService service = (CurrencyService) o;
+        return Objects.equals(mapCurrencySale, service.mapCurrencySale);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(mapCurrencySale);
     }
 }
